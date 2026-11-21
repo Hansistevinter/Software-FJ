@@ -9,7 +9,7 @@ def leer(texto):
 
 def ejecutar_pruebas(gestor):
     """Ejecuta más de diez operaciones, incluyendo escenarios fallidos."""
-    print("\\n--- PRUEBAS AUTOMÁTICAS DE SOFTWARE FJ ---")
+    print("\n--- PRUEBAS AUTOMÁTICAS DE SOFTWARE FJ ---")
     operaciones = 0
 
     def prueba(nombre, accion, esperada=True):
@@ -35,6 +35,10 @@ def ejecutar_pruebas(gestor):
         Cliente("CC1001", "Ana Pérez", "ana2@example.com", "3001234567")), False)
     prueba("Crear sala correctamente", lambda: gestor.agregar_servicio(
         ReservaSala("S01", "Sala ejecutiva", 50000, 12)))
+    prueba("Registrar servicio no disponible", lambda: gestor.agregar_servicio(
+    ReservaSala("S03", "Sala temporal", 40000, 8, disponible=False)))
+    prueba("Rechazar reserva de servicio no disponible",
+       lambda: gestor.crear_reserva("R05", "CC1001", "S03", 1), False)
     prueba("Rechazar tarifa negativa", lambda: ReservaSala("S02", "Sala inválida", -10, 5), False)
     prueba("Crear alquiler de equipos", lambda: gestor.agregar_servicio(
         AlquilerEquipo("E01", "Proyector", 15000, 2)))
@@ -45,9 +49,11 @@ def ejecutar_pruebas(gestor):
     prueba("Rechazar duración inválida", lambda: gestor.crear_reserva("R03", "CC1001", "S01", -2), False)
     prueba("Confirmar reserva", lambda: gestor.buscar_reserva("R01").confirmar())
     prueba("Procesar reserva con impuesto y descuento", lambda: gestor.buscar_reserva("R01").procesar(0.19, 0.10))
+    prueba("Rechazar descuento fuera de rango", lambda: gestor.buscar_reserva("R01").servicio.calcular_costo(
+           2, impuesto=0.19, descuento=1.5), False)
     prueba("Rechazar segunda confirmación", lambda: gestor.buscar_reserva("R01").confirmar(), False)
     prueba("Cancelar reserva pendiente", lambda: gestor.crear_reserva("R04", "CC1001", "E01", 3).cancelar())
-    print(f"\\nPruebas ejecutadas: {operaciones}")
+    print(f"\nPruebas ejecutadas: {operaciones}")
     print("La aplicación continúa activa después de los errores.")
 
 def mostrar_menu():
@@ -82,7 +88,7 @@ def main():
                 gestor.registrar_cliente(cliente)
                 print("Cliente registrado correctamente.")
             elif opcion == "2":
-                print("\\n".join(map(str, gestor.clientes)) or "No hay clientes registrados.")
+                print("\n".join(map(str, gestor.clientes)) or "No hay clientes registrados.")
             elif opcion == "3":
                 print("Tipo: 1. Sala  2. Equipo  3. Asesoría")
                 tipo = leer("Seleccione: ")
@@ -99,7 +105,7 @@ def main():
                 gestor.agregar_servicio(servicio)
                 print("Servicio creado correctamente.")
             elif opcion == "4":
-                print("\\n".join(s.describir() for s in gestor.servicios) or "No hay servicios.")
+                print("\n".join(s.describir() for s in gestor.servicios) or "No hay servicios.")
             elif opcion == "5":
                 reserva = gestor.crear_reserva(leer("Código de reserva: "),
                     leer("Identificación del cliente: "), leer("Código del servicio: "),
