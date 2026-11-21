@@ -1,7 +1,8 @@
 from gestor import GestorSistema
 from clientes import Cliente
 from servicios import ReservaSala, AlquilerEquipo, AsesoriaEspecializada
-from excepciones import ErrorSistema
+from excepciones import ( ErrorSistema, ClienteInvalidoError, ClienteDuplicadoError, ServicioInvalidoError, ServicioNoDisponibleError,
+    ReservaInvalidaError, OperacionNoPermitidaError, ElementoNoEncontradoError )
 from logger_config import logger
 
 def leer(texto):
@@ -12,46 +13,69 @@ def ejecutar_pruebas(gestor):
     print("\n--- PRUEBAS AUTOMÁTICAS DE SOFTWARE FJ ---")
     operaciones = 0
 
-    def prueba(nombre, accion, esperada=True):
+    def prueba(nombre, accion, esperada=True, excepcion_esperada=None):
         nonlocal operaciones
         operaciones += 1
+
         try:
             resultado = accion()
-            if esperada:
-                print(f"[OK] {nombre}" + (f": {resultado}" if resultado is not None else ""))
-            else:
+
+            if excepcion_esperada is not None:
+                print(f"[FALLO DE PRUEBA] {nombre}: no se produjo la excepción esperada.")
+            elif not esperada:
                 print(f"[FALLO DE PRUEBA] {nombre}: se esperaba una excepción.")
+            else:
+                print(f"[OK] {nombre}" + (f": {resultado}" if resultado is not None else ""))
+
         except Exception as exc:
-            logger.exception("Prueba '%s' produjo error controlado.", nombre)
-            if not esperada:
+            if excepcion_esperada is not None:
+                if isinstance(exc, excepcion_esperada):
+                    print(f"[OK] {nombre}: excepción esperada ({type(exc).__name__}: {exc})")
+                else:
+                    print(f"[ERROR] {nombre}: se esperaba {excepcion_esperada.__name__}, pero ocurrió {type(exc).__name__}: {exc}")
+            elif not esperada:
                 print(f"[OK] {nombre}: excepción controlada ({exc})")
             else:
                 print(f"[ERROR] {nombre}: {exc}")
 
     prueba("Registrar cliente válido", lambda: gestor.registrar_cliente(
         Cliente("CC1001", "Ana Pérez", "ana@example.com", "3001234567")))
-    prueba("Rechazar correo inválido", lambda: Cliente("CC1002", "Luis Díaz", "correo-invalido", "3001234567"), False)
+    prueba("Rechazar correo inválido",
+       lambda: Cliente("CC1002", "Luis Díaz", "correo-invalido", "3001234567"),
+       False, excepcion_esperada=ClienteInvalidoError)
     prueba("Rechazar identificación duplicada", lambda: gestor.registrar_cliente(
-        Cliente("CC1001", "Ana Pérez", "ana2@example.com", "3001234567")), False)
+    Cliente("CC1001", "Ana Pérez", "ana2@example.com", "3001234567")),
+    False, excepcion_esperada=ClienteDuplicadoError)
     prueba("Crear sala correctamente", lambda: gestor.agregar_servicio(
         ReservaSala("S01", "Sala ejecutiva", 50000, 12)))
-    prueba("Registrar servicio no disponible", lambda: gestor.agregar_servicio(
-    ReservaSala("S03", "Sala temporal", 40000, 8, disponible=False)))
-    prueba("Rechazar reserva de servicio no disponible",
-       lambda: gestor.crear_reserva("R05", "CC1001", "S03", 1), False)
-    prueba("Rechazar tarifa negativa", lambda: ReservaSala("S02", "Sala inválida", -10, 5), False)
+    prueba("Rechazar tarifa negativa",
+       lambda: ReservaSala("S02", "Sala inválida", -10, 5),
+       False, excepcion_esperada=ServicioInvalidoError)
     prueba("Crear alquiler de equipos", lambda: gestor.agregar_servicio(
         AlquilerEquipo("E01", "Proyector", 15000, 2)))
     prueba("Crear asesoría especializada", lambda: gestor.agregar_servicio(
         AsesoriaEspecializada("A01", "Consultoría TI", 80000, "Tecnología")))
+    prueba("Registrar servicio no disponible", lambda: gestor.agregar_servicio(
+        ReservaSala("S03", "Sala temporal", 40000, 8, disponible=False)))
+    prueba("Rechazar reserva de servicio no disponible",
+           lambda: gestor.crear_reserva("R05", "CC1001", "S03", 1),
+           False, excepcion_esperada=ServicioNoDisponibleError)
     prueba("Crear reserva válida", lambda: gestor.crear_reserva("R01", "CC1001", "S01", 2))
-    prueba("Rechazar cliente inexistente", lambda: gestor.crear_reserva("R02", "NO_EXISTE", "S01", 1), False)
-    prueba("Rechazar duración inválida", lambda: gestor.crear_reserva("R03", "CC1001", "S01", -2), False)
+    prueba("Rechazar cliente inexistente",
+       lambda: gestor.crear_reserva("R02", "NO_EXISTE", "S01", 1),
+       False, excepcion_esperada=ElementoNoEncontradoError)
+    prueba("Rechazar duración inválida",
+       lambda: gestor.crear_reserva("R03", "CC1001", "S01", -2),
+       False, excepcion_esperada=ServicioInvalidoError)
     prueba("Confirmar reserva", lambda: gestor.buscar_reserva("R01").confirmar())
     prueba("Procesar reserva con impuesto y descuento", lambda: gestor.buscar_reserva("R01").procesar(0.19, 0.10))
-    prueba("Rechazar descuento fuera de rango", lambda: gestor.buscar_reserva("R01").servicio.calcular_costo(
-           2, impuesto=0.19, descuento=1.5), False)
-    prueba("Rechazar segunda confirmación", lambda: gestor.buscar_reserva("R01").confirmar(), False)
+    prueba("Rechazar descuento fuera de rango",
+       lambda: gestor.buscar_reserva("R01").servicio.calcular_costo(
+           2, impuesto=0.19, descuento=1.5),
+       False, excepcion_esperada=ServicioInvalidoError)
+    prueba("Rechazar segunda confirmación",
+       lambda: gestor.buscar_reserva("R01").confirmar(),
+       False, excepcion_esperada=OperacionNoPermitidaError)
     prueba("Cancelar reserva pendiente", lambda: gestor.crear_reserva("R04", "CC1001", "E01", 3).cancelar())
     print(f"\nPruebas ejecutadas: {operaciones}")
     print("La aplicación continúa activa después de los errores.")
