@@ -33,6 +33,9 @@ class Servicio(Entidad, ABC):
     @abstractmethod
     def describir(self):
         pass
+    
+    def __str__(self):
+        return self.describir()
 
 class ReservaSala(Servicio):
     def __init__(self, codigo, nombre, tarifa_hora, capacidad, disponible=True):
